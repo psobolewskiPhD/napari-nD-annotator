@@ -18,7 +18,7 @@ on:
 
 jobs:
   build_wheels_macos:
-    name: Build wheels on MacOS ${{ matrix.arch }}
+    name: Build wheels on MacOS
     runs-on: ${{ matrix.os }}
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     strategy:
