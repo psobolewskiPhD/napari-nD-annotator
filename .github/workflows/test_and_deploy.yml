@@ -37,7 +37,7 @@ jobs:
           LDFLAGS: "-Wl,-rpath,/usr/local/opt/libomp/lib -L/usr/local/opt/libomp/lib -lomp"
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.16.5
+        uses: pypa/cibuildwheel@v2.21.2
         env:
           CIBW_ARCHS_MACOS: "x86_64 arm64"
           CIBW_SKIP: "pp*"
