@@ -24,10 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-13, macos-14]
-        arch:
-          - x86_64
-          - arm64
+        os: [macos-13, macos-latest]
     steps:
       - uses: actions/checkout@v3
 
@@ -36,6 +33,7 @@ jobs:
         with:
           auto-update-conda: true
           python-version: "3.9"
+          miniforge-version: "latest"
 
       - name: Install dependencies from conda-forge
         run: |
