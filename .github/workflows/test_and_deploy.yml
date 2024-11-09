@@ -24,23 +24,36 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-11
-            arch: x86_64
-          - os: macos-latest
-            arch: arm64
+        os: [macos-13, macos-14]
+        arch:
+          - x86_64
+          - arm64
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup OpenMP
-        run: brew install libomp
+      - name: Set up conda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          python-version: "3.9"
+
+      - name: Install dependencies from conda-forge
+        run: |
+          conda config --add channels conda-forge
+          conda config --set channel_priority strict
+          conda install -y libomp cmake delocate
+
+      - name: Set environment variables for OpenMP from conda-forge
+        run: |
+          export OMP_PREFIX=$(conda info --base)/envs/${{ matrix.arch }}/lib
+          echo "OMP_PREFIX=$OMP_PREFIX"
         env:
           CC: /usr/bin/clang
           CXX: /usr/bin/clang++
           CPPFLAGS: "-Xpreprocessor -fopenmp"
-          CFLAGS: "-Wno-implicit-function-declaration -I${{ matrix.arch == 'x86_64' && '/usr/local' || '/opt/homebrew' }}/opt/libomp/include"
-          CXXFLAGS: "-I${{ matrix.arch == 'x86_64' && '/usr/local' || '/opt/homebrew' }}/opt/libomp/include"
-          LDFLAGS: "-Wl,-rpath,${{ matrix.arch == 'x86_64' && '/usr/local' || '/opt/homebrew' }}/opt/libomp/lib -L${{ matrix.arch == 'x86_64' && '/usr/local' || '/opt/homebrew' }}/opt/libomp/lib -lomp"
+          CFLAGS: "-I${{ env.OMP_PREFIX }}/include"
+          LDFLAGS: "-L${{ env.OMP_PREFIX }}/lib"
+          DYLD_LIBRARY_PATH: "${{ env.OMP_PREFIX }}/lib"
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.21.2
@@ -51,13 +64,16 @@ jobs:
           CC: /usr/bin/clang
           CXX: /usr/bin/clang++
           CPPFLAGS: "-Xpreprocessor -fopenmp"
-          CFLAGS: "-Wno-implicit-function-declaration -I${{ matrix.arch == 'x86_64' && '/usr/local' || '/opt/homebrew' }}/opt/libomp/include"
-          CXXFLAGS: "-I${{ matrix.arch == 'x86_64' && '/usr/local' || '/opt/homebrew' }}/opt/libomp/include"
-          LDFLAGS: "-Wl,-rpath,${{ matrix.arch == 'x86_64' && '/usr/local' || '/opt/homebrew' }}/opt/libomp/lib -L${{ matrix.arch == 'x86_64' && '/usr/local' || '/opt/homebrew' }}/opt/libomp/lib -lomp"
-          DYLD_LIBRARY_PATH: "${{ matrix.arch == 'x86_64' && '/usr/local' || '/opt/homebrew' }}/opt/libomp/lib"
+          CFLAGS: "-I${{ env.OMP_PREFIX }}/include"
+          LDFLAGS: "-L${{ env.OMP_PREFIX }}/lib"
+          DYLD_LIBRARY_PATH: "${{ env.OMP_PREFIX }}/lib"
 
           # Conditionally set MACOSX_DEPLOYMENT_TARGET for arm64 builds only
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.arch == 'arm64' && '13.0' || '' }}
+
+      - name: Fix external dependencies with delocate
+        run: |
+          delocate-wheel ./wheelhouse/*.whl
 
       - uses: actions/upload-artifact@v3
         with:
